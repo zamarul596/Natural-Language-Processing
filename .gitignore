@@ -9,12 +9,6 @@ __pycache__/
 *$py.class
 *.pyo
 
-# Model files (large)
-model/*.pkl
-
-# Data files (large)
-data/*.csv
-
 # IDE
 .vscode/
 .idea/
