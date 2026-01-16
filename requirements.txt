@@ -1,0 +1,12 @@
+#Fake News Detection System - Dependencies
+# Install using: pip install -r requirements.txt
+
+flask
+pandas
+scikit-learn
+numpy
+joblib
+
+
+
+# to run the system = .\venv\Scripts\python.exe app.py

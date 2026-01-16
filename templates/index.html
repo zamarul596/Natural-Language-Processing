@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Fake News Detection System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>English Fake News Detection System</h1>
+        <p class="subtitle">Model Accuracy: {{ accuracy|round(2) }}% | Powered by NLP</p>
+        
+        <div class="card">
+            <!-- Tab Navigation -->
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('text')">
+                    <span class="tab-icon"></span>
+                    Paste Text
+                </div>
+                <div class="tab" onclick="switchTab('url')">
+                    <span class="tab-icon"></span>
+                    Enter URL
+                </div>
+                <div class="tab" onclick="switchTab('file')">
+                    <span class="tab-icon"></span>
+                    Upload File
+                </div>
+            </div>
+            
+            <!-- Text Input Panel -->
+            <div id="panel-text" class="input-panel active">
+                <textarea id="newsText" placeholder="Paste your news article here...
+
+Example: Copy and paste the full text of a news article from CNN, BBC, Reuters, or any news website."></textarea>
+            </div>
+            
+            <!-- URL Input Panel -->
+            <div id="panel-url" class="input-panel">
+                <input type="url" id="newsUrl" placeholder="https://www.cnn.com/2026/..." />
+                <p class="url-helper">
+                    Enter the URL of a news article. Works best with major news sites (CNN, BBC, Reuters, etc.)
+                </p>
+            </div>
+            
+            <!-- File Upload Panel -->
+            <div id="panel-file" class="input-panel">
+                <div class="file-drop" id="fileDrop" onclick="document.getElementById('fileInput').click()">
+                    <div class="file-drop-icon">📁</div>
+                    <p class="file-drop-text">Click to upload or drag & drop a .txt file</p>
+                    <p id="fileName" class="file-name"></p>
+                </div>
+                <input type="file" id="fileInput" accept=".txt" onchange="handleFile(this.files[0])" />
+            </div>
+            
+            <button id="detectBtn" onclick="detectNews()">
+                Analyze News
+            </button>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Analyzing content...</p>
+            </div>
+            
+            <div id="error" class="error"></div>
+        </div>
+        
+        <div id="result" class="result">
+            <div class="result-content">
+                <div class="donut-container">
+                    <svg class="donut" viewBox="0 0 100 100">
+                        <circle class="donut-bg" cx="50" cy="50" r="40"/>
+                        <circle class="donut-progress" id="donutProgress" cx="50" cy="50" r="40"/>
+                    </svg>
+                    <div class="donut-center">
+                        <span class="donut-icon" id="resultIcon"></span>
+                        <span class="donut-percent" id="donutPercent"></span>
+                    </div>
+                </div>
+                <div class="result-details">
+                    <h2 id="resultText"></h2>
+                    <div class="prob-labels">
+                        <div class="prob-label fake-label">
+                            <span class="prob-dot fake-dot"></span>
+                            <span>Fake: <strong id="fakeProbText">0%</strong></span>
+                        </div>
+                        <div class="prob-label real-label">
+                            <span class="prob-dot real-dot"></span>
+                            <span>Real: <strong id="realProbText">0%</strong></span>
+                        </div>
+                    </div>
+                    <p class="result-meta" id="resultMeta"></p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-box">
+            <h3>Tips for Best Results</h3>
+            <ul>
+                <li>Use complete news articles (not just headlines)</li>
+                <li>Longer articles give more accurate results</li>
+                <li>Works best with English news content</li>
+                <li>The model analyzes writing patterns, not facts</li>
+                <li>Always verify important news from multiple sources</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'text';
+        let fileContent = '';
+        
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // Update tabs
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.closest('.tab').classList.add('active');
+            
+            // Update panels
+            document.querySelectorAll('.input-panel').forEach(p => p.classList.remove('active'));
+            document.getElementById('panel-' + tab).classList.add('active');
+            
+            // Hide results
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+        }
+        
+        function handleFile(file) {
+            if (!file) return;
+            
+            if (!file.name.endsWith('.txt')) {
+                showError('Please upload a .txt file');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                fileContent = e.target.result;
+                document.getElementById('fileName').textContent = '📎 ' + file.name;
+            };
+            reader.readAsText(file);
+        }
+        
+        // Drag and drop
+        const dropZone = document.getElementById('fileDrop');
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            handleFile(file);
+        });
+        
+        function showError(message) {
+            const error = document.getElementById('error');
+            error.textContent = message;
+            error.style.display = 'block';
+        }
+        
+        async function detectNews() {
+            const btn = document.getElementById('detectBtn');
+            const result = document.getElementById('result');
+            const error = document.getElementById('error');
+            const loading = document.getElementById('loading');
+            
+            error.style.display = 'none';
+            result.style.display = 'none';
+            
+            let payload = { type: currentTab };
+            
+            if (currentTab === 'text') {
+                const text = document.getElementById('newsText').value.trim();
+                if (text.length < 50) {
+                    showError('Please enter at least 50 characters');
+                    return;
+                }
+                payload.text = text;
+            } else if (currentTab === 'url') {
+                const url = document.getElementById('newsUrl').value.trim();
+                if (!url) {
+                    showError('Please enter a URL');
+                    return;
+                }
+                payload.url = url;
+            } else if (currentTab === 'file') {
+                if (!fileContent) {
+                    showError('Please upload a file first');
+                    return;
+                }
+                payload.content = fileContent;
+            }
+            
+            btn.disabled = true;
+            loading.style.display = 'block';
+            
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                loading.style.display = 'none';
+                
+                if (data.success) {
+                    result.className = 'result ' + data.result.toLowerCase();
+                    
+                    document.getElementById('resultIcon').textContent = 
+                        data.result === 'FAKE' ? '⚠️' : '✅';
+                    document.getElementById('resultText').textContent = 
+                        data.result === 'FAKE' ? 'LIKELY FAKE NEWS' : 'LIKELY REAL NEWS';
+                    
+                    //donut chart
+                    const confidence = data.confidence;
+                    const circumference = 2 * Math.PI * 40;
+                    const offset = circumference - (confidence / 100) * circumference;
+                    const donutProgress = document.getElementById('donutProgress');
+                    donutProgress.style.strokeDasharray = circumference;
+                    donutProgress.style.strokeDashoffset = offset;
+                    
+                    // Set donut color based on result
+                    if (data.result === 'FAKE') {
+                        donutProgress.style.stroke = '#ef4444';
+                    } else {
+                        donutProgress.style.stroke = '#22c55e';
+                    }
+                    
+                    document.getElementById('donutPercent').textContent = confidence + '%';
+                    document.getElementById('fakeProbText').textContent = data.fake_prob + '%';
+                    document.getElementById('realProbText').textContent = data.real_prob + '%';
+                    
+                    let meta = 'Analyzed ' + data.text_length + ' characters';
+                    if (data.input_type === 'url') {
+                        meta += ' from URL';
+                    }
+                    document.getElementById('resultMeta').textContent = meta;
+                    
+                    result.style.display = 'block';
+                } else {
+                    showError(data.error);
+                }
+            } catch (e) {
+                loading.style.display = 'none';
+                showError('Error: ' + e.message);
+            }
+            
+            btn.disabled = false;
+        }
+    </script>
+</body>
+</html>
