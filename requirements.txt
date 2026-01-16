@@ -1,4 +1,4 @@
-#Fake News Detection System - Dependencies
+# Fake News Detection System - Dependencies
 # Install using: pip install -r requirements.txt
 
 flask
@@ -6,7 +6,15 @@ pandas
 scikit-learn
 numpy
 joblib
+requests
+beautifulsoup4
 
 
 
-# to run the system = .\venv\Scripts\python.exe app.py
+# How to run:
+# 1. Create virtual environment: python -m venv venv
+# 2. Activate: .\venv\Scripts\Activate.ps1 (Windows) or source venv/bin/activate (Mac/Linux)
+# 3. Install dependencies: pip install -r requirements.txt
+# 4. Train model (if needed): python train_model.py
+# 5. Run app: python app.py
+# 6. Open: http://127.0.0.1:5000
