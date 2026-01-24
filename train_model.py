@@ -4,7 +4,7 @@ Fake News Detection System - Model Training
 - Better text preprocessing (keeps important news patterns)
 - Larger vocabulary for better generalization
 - Balanced training with proper regularization
-- Removes dataset-specific bias (Reuters markers.)
+- Removes dataset-specific bias 
 """
 
 import pandas as pd
