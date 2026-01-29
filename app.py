@@ -1,6 +1,5 @@
 """
 English Fake News Detection System - Web Application
-University Project - Semester 7
 
 FEATURES:
 - Text input (paste news article)
